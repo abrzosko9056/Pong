@@ -9,81 +9,77 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
+
+    var topPaddle = SKSpriteNode()
+    var ball = SKSpriteNode()
+    var counter = 0
+    var label = SKLabelNode()
     
-    private var label : SKLabelNode?
-    private var spinnyNode : SKShapeNode?
+    let ballCategory: UInt32 = 1
+    let topCategory: UInt32 = 2
+    let paddleCategory: UInt32 = 4
+    
     
     override func didMove(to view: SKView) {
+        physicsWorld.contactDelegate = self
+        let border = SKPhysicsBody(edgeLoopFrom: self.frame)
+        self.physicsBody = border
         
-        // Get label node from scene and store it for use later
-        self.label = self.childNode(withName: "//helloLabel") as? SKLabelNode
-        if let label = self.label {
-            label.alpha = 0.0
-            label.run(SKAction.fadeIn(withDuration: 2.0))
+        
+        let topLeft = CGPoint(x: frame.origin.x, y: -frame.origin.y)
+        let topRight = CGPoint(x: -frame.origin.x, y: -frame.origin.y)
+        
+        let top = SKNode()
+        top.name = "top"
+        top.physicsBody = SKPhysicsBody(edgeFrom: topLeft, to: topRight)
+        self.addChild(top)
+        topPaddle = self.childNode(withName: "topPaddle") as! SKSpriteNode
+        ball = self.childNode(withName: "ball") as! SKSpriteNode
+        topPaddle.physicsBody?.categoryBitMask = paddleCategory
+        ball.physicsBody?.categoryBitMask = ballCategory
+        top.physicsBody?.categoryBitMask = topCategory
+       
+        ball.physicsBody?.contactTestBitMask = topCategory | paddleCategory
+        
+        
+        label = SKLabelNode(text: "0")
+        label.fontSize = 100.0
+        label.position = CGPoint(x: 0, y: -35)
+        self.addChild(label)
+    }
+    func didBegin(_ contact: SKPhysicsContact) {
+        if contact.bodyA.categoryBitMask == topCategory {
+            changePaddle(node: topPaddle)
         }
         
-        // Create shape node to use during mouse interaction
-        let w = (self.size.width + self.size.height) * 0.05
-        self.spinnyNode = SKShapeNode.init(rectOf: CGSize.init(width: w, height: w), cornerRadius: w * 0.3)
-        
-        if let spinnyNode = self.spinnyNode {
-            spinnyNode.lineWidth = 2.5
-            
-            spinnyNode.run(SKAction.repeatForever(SKAction.rotate(byAngle: CGFloat(Double.pi), duration: 1)))
-            spinnyNode.run(SKAction.sequence([SKAction.wait(forDuration: 0.5),
-                                              SKAction.fadeOut(withDuration: 0.5),
-                                              SKAction.removeFromParent()]))
+        if contact.bodyA.contactTestBitMask == paddleCategory {
+            counter += 1
+            label.text = "\(counter)"
         }
-    }
     
-    
-    func touchDown(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.green
-            self.addChild(n)
-        }
-    }
-    
-    func touchMoved(toPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.blue
-            self.addChild(n)
-        }
-    }
-    
-    func touchUp(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.red
-            self.addChild(n)
-        }
-    }
+}
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let label = self.label {
-            label.run(SKAction.init(named: "Pulse")!, withKey: "fadeInOut")
-        }
-        
-        for t in touches { self.touchDown(atPoint: t.location(in: self)) }
+        let touch = touches.first!
+        let location = touch.location(in: self)
+        topPaddle.run(SKAction.moveTo(x: location.x, duration: 0.2))
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchMoved(toPoint: t.location(in: self)) }
+        let touch = touches.first!
+        let location = touch.location(in: self)
+        topPaddle.run(SKAction.moveTo(x: location.x, duration: 0.2))
     }
     
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
+
+    func changePaddle(node:SKSpriteNode) {
+        if node.color == .yellow {
+            node.removeAllActions()
+            node.removeFromParent()
+        }
+   node.color = .yellow
+        
     }
-    
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
-    }
-    
-    
-    override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
-    }
+
 }
